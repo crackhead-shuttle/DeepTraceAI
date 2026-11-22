@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DEEPTRACE AI</title>
+  <style>
+    :root { color-scheme: dark; --bg:#120f26; --panel:#1e1b3a; --cyan:#22d3ee; --pink:#ec4899; --text:#eeeafc; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; font-family:system-ui,sans-serif; background:radial-gradient(circle at top right,#312e55,#120f26 55%); color:var(--text); }
+    main { max-width:900px; margin:auto; min-height:100vh; display:flex; flex-direction:column; }
+    header { padding:20px; border-bottom:1px solid #38325f; font-weight:800; letter-spacing:.08em; }
+    #messages { flex:1; overflow:auto; padding:24px; }
+    .message { max-width:82%; margin:10px 0; padding:12px 14px; border-radius:14px; white-space:pre-wrap; line-height:1.5; }
+    .user { margin-left:auto; background:#0d3b49; border:1px solid #1c8da4; }
+    .assistant { background:var(--panel); border:1px solid #38325f; }
+    form { display:flex; gap:8px; padding:16px; border-top:1px solid #38325f; }
+    input { flex:1; min-width:0; border:1px solid #38325f; border-radius:12px; background:#0d0b20; color:var(--text); padding:14px; outline:none; }
+    input:focus { border-color:var(--cyan); }
+    button { border:0; border-radius:12px; background:linear-gradient(135deg,var(--pink),#7c3aed); color:white; padding:0 18px; font-weight:700; cursor:pointer; }
+    button:disabled { opacity:.6; cursor:wait; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>DEEPTRACE AI</header>
+    <section id="messages" aria-live="polite"></section>
+    <form id="chat-form">
+      <input id="prompt" name="prompt" autocomplete="off" placeholder="Ask DEEPTRACE AI..." aria-label="Message">
+      <button id="send" type="submit">Send</button>
+    </form>
+  </main>
+  <script>
+    const messages = document.getElementById('messages');
+    const form = document.getElementById('chat-form');
+    const prompt = document.getElementById('prompt');
+    const send = document.getElementById('send');
+    const history = [];
+
+    function addMessage(role, text) {
+      const node = document.createElement('div');
+      node.className = `message ${role}`;
+      node.textContent = text;
+      messages.appendChild(node);
+      messages.scrollTop = messages.scrollHeight;
+      return node;
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const text = prompt.value.trim();
+      if (!text) return;
+
+      prompt.value = '';
+      send.disabled = true;
+      addMessage('user', text);
+      const assistant = addMessage('assistant', 'Thinking…');
+      history.push({ role: 'user', content: text });
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: history })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
+        assistant.textContent = data.message;
+        history.push({ role: 'assistant', content: data.message });
+      } catch (error) {
+        assistant.textContent = `Error: ${error.message}`;
+      } finally {
+        send.disabled = false;
+        prompt.focus();
+      }
+    });
+  </script>
+</body>
+</html>
